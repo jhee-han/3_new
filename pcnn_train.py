@@ -164,6 +164,9 @@ if __name__ == '__main__':
         train_transforms = transforms.Compose([
         transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
         transforms.RandomHorizontalFlip(),
+        RandAugment(num_ops=2, magnitude=9),
+        transforms.ToTensor(),  # RandAugment 이후에 ToTensor 적용
+        RandomErasing(probability=1.0, mode='const', max_count=1, device='cpu', scale=(1.0, 1.0), value=0),  # Cutout(16) 유사
         rescaling
         ])
 
