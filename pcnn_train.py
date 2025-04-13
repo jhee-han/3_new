@@ -13,6 +13,8 @@ from pprint import pprint
 import argparse
 from pytorch_fid.fid_score import calculate_fid_given_paths
 import pdb
+from torchvision.transforms import RandAugment
+from timm.data import RandomErasing
 
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training', ema=None):
     if mode == 'training':
