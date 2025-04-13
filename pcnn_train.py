@@ -13,8 +13,16 @@ from pprint import pprint
 import argparse
 from pytorch_fid.fid_score import calculate_fid_given_paths
 import pdb
+<<<<<<< HEAD
 from torchvision.transforms import RandAugment
 from timm.data import RandomErasing
+=======
+from torchvision.transforms import (Compose, ToPILImage, ToTensor,
+                                    RandAugment, RandomCrop,
+                                    RandomHorizontalFlip, RandomErasing)
+
+#pip install timm (install it before train)
+>>>>>>> 054ea43 (data_aug)
 
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training', ema=None):
     if mode == 'training':
@@ -163,13 +171,36 @@ if __name__ == '__main__':
     
     elif "cpen455" in args.dataset:
         # ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling]) #original
-        train_transforms = transforms.Compose([
-        transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
-        transforms.RandomHorizontalFlip(),
-        RandAugment(num_ops=2, magnitude=9),
-        transforms.ToTensor(),  # RandAugment 이후에 ToTensor 적용
-        RandomErasing(probability=1.0, mode='const', max_count=1, device='cpu', scale=(1.0, 1.0), value=0),  # Cutout(16) 유사
-        rescaling
+        cutout_scale = (0.24, 0.26)      # (min, max)  ← 길이 2짜리 튜플!
+
+        train_transforms = Compose([
+            # 1) 기본 공간 변환 (PIL / Tensor 모두 OK)
+            RandomCrop(32, padding=4, padding_mode='reflect'),
+            RandomHorizontalFlip(),
+
+            # 2) Tensor → PIL  (RandAugment 는 PIL/uint8 에서 가장 안전)
+            ToPILImage(),
+
+            # 3) RandAugment  (N=2, M=9)
+            RandAugment(num_ops=2, magnitude=9),
+
+            # 4) PIL → Tensor   (0‥1 float32)
+            ToTensor(),
+
+            # 5) Cut‑out(16×16) : RandomErasing 로 구현  (Tensor 전용)
+            RandomErasing(p=1.0,            # 항상 한 번 적용
+                        scale=cutout_scale,
+                        ratio=(0.9, 1.1), # 정사각형 근처
+                        value=0),         # 검은 패치
+
+            # 6) soft‑Cutout : 추가 정규화용 RandomErasing
+            RandomErasing(p=0.5,
+                        scale=(0.02, 0.20),
+                        ratio=(0.3, 3.3),
+                        value='random'),   # 채널별 랜덤 값
+
+            # 7) 모델이 기대하는 [-1, 1] 스케일
+            rescaling,
         ])
 
         val_transforms = transforms.Compose([
