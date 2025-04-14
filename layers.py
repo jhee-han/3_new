@@ -127,6 +127,12 @@ class gated_resnet(nn.Module):
             self.film_gamma = nn.Linear(embedding_dim, num_filters)
             self.film_beta = nn.Linear(embedding_dim, num_filters)
 
+            nn.init.zeros_(self.film_gamma.weight)   # W = 0
+            nn.init.ones_ (self.film_gamma.bias)     # b = 1  → gamma ≈ 1
+            nn.init.zeros_(self.film_beta.weight)    # W = 0
+            nn.init.zeros_(self.film_beta.bias)      # b = 0  → beta  ≈ 0
+
+
         if skip_connection != 0 :
             self.nin_skip = nin(2 * skip_connection * num_filters, num_filters)
 
@@ -142,7 +148,12 @@ class gated_resnet(nn.Module):
         if class_embed is not None:
             gamma = self.film_gamma(class_embed).unsqueeze(-1).unsqueeze(-1)
             beta = self.film_beta(class_embed).unsqueeze(-1).unsqueeze(-1)
-            x = gamma*x + beta
+
+            #debugging_film
+            # if self.film and (not hasattr(self, "_dbg_printed")):
+            #     with torch.no_grad():
+            #         print(f"[FiLM] gamma μ={gamma.mean():.3f}, σ={gamma.std():.3f}")
+            # x = gamma*x + beta
 
         x = self.nonlinearity(x)
         x = self.dropout(x)

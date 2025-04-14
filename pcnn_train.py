@@ -16,6 +16,24 @@ import pdb
 from torchvision.transforms import (Compose, ToPILImage, ToTensor,
                                     RandAugment, RandomCrop,
                                     RandomHorizontalFlip, RandomErasing,ColorJitter, GaussianBlur)
+NUM_CLASSES = len(my_bidict)
+
+def fast_predict(model, x, num_classes):
+    """
+    Bayes‑rule 방식으로 클래스 예측.
+    x : (B,C,H,W)  Tensor  (cuda)
+    return : (B,)  LongTensor
+    """
+    B = x.size(0)
+    ll_list = []
+    with torch.no_grad():
+        for lbl in range(num_classes):
+            lbl_vec = torch.full((B,), lbl, dtype=torch.long, device=x.device)
+            pix_out = model(x, lbl_vec)           # (B, ⋯)
+            ll      = - discretized_mix_logistic_loss(x, pix_out, Bayes=True)
+            ll_list.append(ll.view(-1,1))
+    ll_all = torch.cat(ll_list, dim=1)            # (B, K)
+    return ll_all.argmax(1)                       # (B,)
 
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training', ema=None):
     if mode == 'training':
@@ -25,11 +43,15 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
         
     deno =  args.batch_size * np.prod(args.obs) * np.log(2.)        
     loss_tracker = mean_tracker()
+    acc_tracker = ratio_tracker() 
     
     for batch_idx, (model_input,labels) in enumerate(tqdm(data_loader)):
         model_input = model_input.to(device) #model_input.shape torch.Size([64, 3, 32, 32])
         labels = labels.to(device)
         model_output = model(model_input,labels) #model_output.shape torch.Size([64, 50, 32, 32])
+        preds = fast_predict(model, model_input, NUM_CLASSES)
+        acc_tracker.update((preds == labels).sum().item(), labels.size(0))
+
         # pdb.set_trace()
         # sum over discretized_mix_logistic_loss
         if mode == 'training':
@@ -45,9 +67,17 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
             if ema is not None:          
                 ema.update(model)
         
+    # if args.en_wandb:
+    #     wandb.log({mode + "-Average-BPD" : loss_tracker.get_mean()})
+    #     wandb.log({mode + "-epoch": epoch})
+    #     wandb.log({mode + "Training accuracy" : acc_tracker.get_ratio()})"
     if args.en_wandb:
-        wandb.log({mode + "-Average-BPD" : loss_tracker.get_mean()})
-        wandb.log({mode + "-epoch": epoch})
+        wandb.log({
+        f"{mode}-Average-BPD": loss_tracker.get_mean(),
+        f"{mode}/acc"       : acc_tracker.get_ratio(),   
+        "epoch"             : epoch
+        })
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -276,6 +306,11 @@ if __name__ == '__main__':
                       args = args,
                       epoch = epoch,
                       mode = 'val')
+        if epoch % 5 == 0:                 # 매 5 epoch 마다
+            val_acc = classifier(model, val_loader, device)
+            print(f"[epoch {epoch}]  val_acc = {val_acc:.3f}")
+            if args.en_wandb:
+                wandb.log({"val/acc": val_acc, "epoch": epoch})
         
         if epoch % args.sampling_interval == 0:
             print('......sampling......')
