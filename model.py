@@ -106,7 +106,7 @@ class PixelCNN(nn.Module):
         self.mid_fusion = mid_fusion
         if self.mid_fusion:
             self.fuse_mlp = nn.Sequential(
-                nn.Linear(embedding_dim, 2*nr_filters),   # (γ_u|γ_ul)
+                nn.Linear(nr_filters, 2*nr_filters),   # (γ_u|γ_ul)
                 nn.ReLU(inplace=True),
                 nn.Linear(2*nr_filters, 2*nr_filters)     # 깊이 ↑ 원하면 층 추가
             )
@@ -143,9 +143,14 @@ class PixelCNN(nn.Module):
                                       class_embed_vec, class_embed_map)
             if self.mid_fusion:
                 fuse = self.fuse_mlp(class_embed_vec)          # (B,2C)
-                γ_u, γ_ul = fuse.chunk(2,1)
-                u_out  = u_out  + γ_u[:,:,None,None]
-                ul_out = ul_out + γ_ul[:,:,None,None]
+                gamma_u, gamma_ul = fuse.chunk(2, dim=1)
+                gamma_u  = gamma_u[:, :, None, None]             # (B,C,1,1)
+                gamma_ul = gamma_ul[:, :, None, None]
+                        
+                u_out[-1]  = u_out[-1]  + gamma_u
+                ul_out[-1] = ul_out[-1] + gamma_ul
+
+
                 
             u_list  += u_out
             ul_list += ul_out
