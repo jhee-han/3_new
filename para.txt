@@ -15,4 +15,4 @@
 !python pcnn_train.py --batch_size 64 --sample_batch_size 32 --sampling_interval 10 --save_interval 10 --dataset cpen455 --nr_resnet 1 --nr_filters 60 --nr_logistic_mix 10 --max_epochs 300 --en_wandb True --tag 3_new_film_revise #acc 67 fid 대략 40
 !python pcnn_train.py --batch_size 64 --sample_batch_size 32 --sampling_interval 10 --save_interval 10 --dataset cpen455 --nr_resnet 1 --nr_filters 100 --nr_logistic_mix 10 --lr 0.00001 --max_epochs 300 --en_wandb True --tag 3_new_plus_middle_fusion #acc62 fid 20이하
 
-!python pcnn_train.py --batch_size 64 --sample_batch_size 32 --sampling_interval 10 --save_interval 10 --dataset cpen455 --nr_resnet 3 --nr_filters 96 --nr_logistic_mix 10 --lr 0.0003 --max_epochs 300 --en_wandb True --tag 3_new_middle_advanced
+!python pcnn_train.py --batch_size 64 --sample_batch_size 32 --sampling_interval 10 --save_interval 10 --dataset cpen455 --nr_resnet 3 --nr_filters 96 --nr_logistic_mix 10 --lr 0.0003 --max_epochs 300 --en_wandb True --tag 3_new_middle_advanced #acc 58 fid 30이하
