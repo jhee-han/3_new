@@ -105,8 +105,11 @@ class PixelCNN(nn.Module):
         self.init_padding = None
         self.mid_fusion = mid_fusion
         if self.mid_fusion:
-            self.fuse_u  = nn.Conv2d(nr_filters, nr_filters, 1, bias=False)
-            self.fuse_ul = nn.Conv2d(nr_filters, nr_filters, 1, bias=False)
+            self.fuse_mlp = nn.Sequential(
+                nn.Linear(embedding_dim, 2*nr_filters),   # (γ_u|γ_ul)
+                nn.ReLU(inplace=True),
+                nn.Linear(2*nr_filters, 2*nr_filters)     # 깊이 ↑ 원하면 층 추가
+            )
 
 
 
@@ -136,8 +139,14 @@ class PixelCNN(nn.Module):
         u_list  = [self.u_init(x)]
         ul_list = [self.ul_init[0](x) + self.ul_init[1](x)] #초기 feature map생성
         for i in range(3):
-            # resnet block
-            u_out, ul_out = self.up_layers[i](u_list[-1], ul_list[-1],class_embed_vec, class_embed_map)
+            u_out, ul_out = self.up_layers[i](u_list[-1], ul_list[-1],
+                                      class_embed_vec, class_embed_map)
+            if self.mid_fusion:
+                fuse = self.fuse_mlp(class_embed_vec)          # (B,2C)
+                γ_u, γ_ul = fuse.chunk(2,1)
+                u_out  = u_out  + γ_u[:,:,None,None]
+                ul_out = ul_out + γ_ul[:,:,None,None]
+                
             u_list  += u_out
             ul_list += ul_out
 
@@ -149,11 +158,6 @@ class PixelCNN(nn.Module):
         ###    DOWN PASS    ###
         u  = u_list.pop()
         ul = ul_list.pop()
-
-        if self.mid_fusion:
-            fuse_map = class_embed_map                      # (B,C,1,1)
-            u  = u  + self.fuse_u (fuse_map)                # broadcast to spatial
-            ul = ul + self.fuse_ul(fuse_map)
 
         for i in range(3):
             # resnet block
