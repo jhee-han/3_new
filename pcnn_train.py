@@ -13,16 +13,9 @@ from pprint import pprint
 import argparse
 from pytorch_fid.fid_score import calculate_fid_given_paths
 import pdb
-<<<<<<< HEAD
-from torchvision.transforms import RandAugment
-from timm.data import RandomErasing
-=======
 from torchvision.transforms import (Compose, ToPILImage, ToTensor,
                                     RandAugment, RandomCrop,
                                     RandomHorizontalFlip, RandomErasing)
-
-#pip install timm (install it before train)
->>>>>>> 054ea43 (data_aug)
 
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training', ema=None):
     if mode == 'training':
@@ -183,6 +176,9 @@ if __name__ == '__main__':
 
             # 3) RandAugment  (N=2, M=9)
             RandAugment(num_ops=2, magnitude=9),
+
+            ColorJitter(0.4, 0.4, 0.4, 0.1),  # 추가
+            GaussianBlur(kernel_size=3),     # 추가
 
             # 4) PIL → Tensor   (0‥1 float32)
             ToTensor(),
