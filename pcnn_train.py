@@ -15,7 +15,7 @@ from pytorch_fid.fid_score import calculate_fid_given_paths
 import pdb
 from torchvision.transforms import (Compose, ToPILImage, ToTensor,
                                     RandAugment, RandomCrop,
-                                    RandomHorizontalFlip, RandomErasing)
+                                    RandomHorizontalFlip, RandomErasing,ColorJitter, GaussianBlur)
 
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training', ema=None):
     if mode == 'training':
