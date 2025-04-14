@@ -18,6 +18,17 @@ from torchvision.transforms import (Compose, ToPILImage, ToTensor,
                                     RandomHorizontalFlip, RandomErasing,ColorJitter, GaussianBlur)
 NUM_CLASSES = len(my_bidict)
 
+def classifier(model, data_loader, device):
+    """validation/test dataloader 로 정확도 계산"""
+    model.eval()
+    acc = ratio_tracker()                      # utils.py 에 있는 간단한 카운터
+    with torch.no_grad():
+        for x, y in data_loader:
+            x, y = x.to(device), y.to(device)
+            pred = fast_predict(model, x, NUM_CLASSES)
+            acc.update((pred == y).sum().item(), y.size(0))
+    return acc.get_ratio()
+  
 def fast_predict(model, x, num_classes):
     """
     Bayes‑rule 방식으로 클래스 예측.
